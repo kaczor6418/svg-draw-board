@@ -1,21 +1,67 @@
-export class SvgDrawBoard {
+import { getMouseXYPositionFromElement } from './index.js';
+
+const template = `
+<svg id="drawing-area" width="100%" height="100%">
+    <polyline id="area-polyline" points="" fill="none" stroke="black" />
+</svg>
+`
+
+export class SvgDrawBoard extends HTMLElement {
+    static TAG = 'svg-draw-board';
     static referenceElmentColor = 'green';
     static defaultElmentColor = 'black';
 
     #drawingArea;
+    #polyline;
     #referenceElementProxy;
 
     constructor(drawingArea) {
-        this.#drawingArea = drawingArea;
+        super();
+        this.attachShadow({ mode: 'open' });
+        this.shadowRoot.innerHTML = template;
+        this.#drawingArea = this.shadowRoot.querySelector('#drawing-area');
+        this.#polyline = this.shadowRoot.querySelector('#area-polyline');
         this.#referenceElementProxy = new Proxy({ circle: null }, {
             set: this.#newReferenceElmentHandler
-        })
+        });
+        this.#initializeListeners();
     }
 
     drawCircle({ x, y }, r = 10) {
         const circle = this.#createSVGElement('circle', { cx: x.toString(), cy: y.toString(), r: r.toString(), fill: SvgDrawBoard.referenceElmentColor });
         this.#drawingArea.appendChild(circle);
         this.#referenceElementProxy.circle = circle;
+    }
+
+    getCircleCoordinates(circle) {
+        return {
+            x: Number(circle.getAttribute('cx')),
+            y: Number(circle.getAttribute('cy'))
+        }
+    }
+
+    #initializeListeners() {
+        this.#drawingArea.addEventListener('click', (e) => {
+            this.drawCircle(getMouseXYPositionFromElement(this.#drawingArea, e));
+        });
+    }
+
+    #newReferenceElmentHandler = (oldElement, prop, newElement) => {
+        if (prop in oldElement) {
+            oldElement[prop]?.setAttribute('fill', SvgDrawBoard.defaultElmentColor);
+            oldElement[prop] = newElement;
+            this.#addNewPolylinePoint(this.getCircleCoordinates(newElement));
+            return true;
+        } else {
+            throw Error(`Property: ${prop.toString()} doesn't exists in reference elements`)
+        }
+    }
+
+    #addNewPolylinePoint({x, y}) {
+        const point = this.#drawingArea.createSVGPoint();
+        point.x = x;
+        point.y = y;
+        this.#polyline.points.appendItem(point);
     }
 
     #createSVGElement(tag, attributes) {
@@ -25,15 +71,6 @@ export class SvgDrawBoard {
         }
         return svgElement;
     }
-
-    #newReferenceElmentHandler = (oldElement, prop, newElement) => {
-        if (prop in oldElement) {
-            oldElement[prop]?.setAttribute('fill', SvgDrawBoard.defaultElmentColor);
-            oldElement[prop] = newElement;
-            return true;
-        } else {
-            throw Error(`Property: ${prop.toString()} doesn't exists in reference elements`)
-        }
-    }
-
 }
+
+customElements.define(SvgDrawBoard.TAG, SvgDrawBoard);
