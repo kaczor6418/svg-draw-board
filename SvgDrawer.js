@@ -1,7 +1,7 @@
 import { getMouseXYPositionFromElement } from './index.js';
 
 const template = `
-<svg id="drawing-area" width="100%" height="100%">
+<svg id="drawing-area" width="100%" height="100%" viewBox="0 0 1920 1080" preserveAspectRatio="xMinYMin meet">
     <polyline id="area-polyline" points="" fill="none" stroke="black" />
 </svg>
 `
@@ -13,30 +13,29 @@ export class SvgDrawBoard extends HTMLElement {
 
     #drawingArea;
     #polyline;
-    #referenceElementProxy;
+    #referenceElement;
 
-    constructor(drawingArea) {
+    constructor() {
         super();
         this.attachShadow({ mode: 'open' });
         this.shadowRoot.innerHTML = template;
         this.#drawingArea = this.shadowRoot.querySelector('#drawing-area');
         this.#polyline = this.shadowRoot.querySelector('#area-polyline');
-        this.#referenceElementProxy = new Proxy({ circle: null }, {
+        this.#referenceElement = new Proxy({ circle: null }, {
             set: this.#newReferenceElmentHandler
         });
         this.#initializeListeners();
     }
 
     drawCircle({ x, y }, r = 10) {
-        const coordinates = this.#translateToSVGCoordinates(x, y);
         const circle = this.#createSVGElement('circle', {
-            cx: coordinates.x.toString(),
-            cy: coordinates.y.toString(),
+            cx: x.toString(),
+            cy: y.toString(),
             r: r.toString(),
             fill: SvgDrawBoard.referenceElmentColor
         });
         this.#drawingArea.appendChild(circle);
-        this.#referenceElementProxy.circle = circle;
+        this.#referenceElement.circle = circle;
     }
 
     getCircleCoordinates(circle) {
@@ -46,18 +45,20 @@ export class SvgDrawBoard extends HTMLElement {
         }
     }
 
-    #translateToSVGCoordinates(x, y) {
-        const point = this.#drawingArea.createSVGPoint();
-        point.x = x;
-        point.y = y;
-        point.matrixTransform(this.#drawingArea.getScreenCTM().inverse());
-        return { x: point.x, y: point.y };
-    }
-
     #initializeListeners() {
         this.#drawingArea.addEventListener('click', (e) => {
-            this.drawCircle(getMouseXYPositionFromElement(this.#drawingArea, e));
+            const {x, y} = getMouseXYPositionFromElement(this.#drawingArea, e);
+            this.drawCircle(this.#translateToSVGCoordinates(x, y));
         });
+    }
+
+    #translateToSVGCoordinates(x, y) {
+        const point = this.#drawingArea.createSVGPoint();
+        const CTM = this.#drawingArea.getScreenCTM();
+        point.x = (x - CTM.e) / CTM.a;
+        point.y = (y - CTM.f) / CTM.d;
+        point.matrixTransform(this.#drawingArea.getScreenCTM().inverse());
+        return { x: point.x, y: point.y };
     }
 
     #newReferenceElmentHandler = (oldElement, prop, newElement) => {
