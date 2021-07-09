@@ -28,7 +28,13 @@ export class SvgDrawBoard extends HTMLElement {
     }
 
     drawCircle({ x, y }, r = 10) {
-        const circle = this.#createSVGElement('circle', { cx: x.toString(), cy: y.toString(), r: r.toString(), fill: SvgDrawBoard.referenceElmentColor });
+        const coordinates = this.#translateToSVGCoordinates(x, y);
+        const circle = this.#createSVGElement('circle', {
+            cx: coordinates.x.toString(),
+            cy: coordinates.y.toString(),
+            r: r.toString(),
+            fill: SvgDrawBoard.referenceElmentColor
+        });
         this.#drawingArea.appendChild(circle);
         this.#referenceElementProxy.circle = circle;
     }
@@ -38,6 +44,14 @@ export class SvgDrawBoard extends HTMLElement {
             x: Number(circle.getAttribute('cx')),
             y: Number(circle.getAttribute('cy'))
         }
+    }
+
+    #translateToSVGCoordinates(x, y) {
+        const point = this.#drawingArea.createSVGPoint();
+        point.x = x;
+        point.y = y;
+        point.matrixTransform(this.#drawingArea.getScreenCTM().inverse());
+        return { x: point.x, y: point.y };
     }
 
     #initializeListeners() {
@@ -57,7 +71,7 @@ export class SvgDrawBoard extends HTMLElement {
         }
     }
 
-    #addNewPolylinePoint({x, y}) {
+    #addNewPolylinePoint({ x, y }) {
         const point = this.#drawingArea.createSVGPoint();
         point.x = x;
         point.y = y;
