@@ -1,13 +1,21 @@
 import { getMouseXYPositionFromElement } from './index.js';
 
 const template = `
-<svg id="drawing-area" width="100%" height="100%" viewBox="0 0 1920 1080" preserveAspectRatio="xMinYMin meet">
+<style>
+:host {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+</style>
+<svg id="drawing-area" width="100%" height="100%" preserveAspectRatio="xMinYMin meet">
     <polyline id="area-polyline" points="" fill="none" stroke="black" />
 </svg>
 `
 
 export class SvgDrawBoard extends HTMLElement {
     static TAG = 'svg-draw-board';
+    static observedAttributes = ['view-box'];
     static referenceElmentColor = 'green';
     static defaultElmentColor = 'black';
 
@@ -25,6 +33,19 @@ export class SvgDrawBoard extends HTMLElement {
             set: this.#newReferenceElmentHandler
         });
         this.#initializeListeners();
+    }
+
+    attributeChangedCallback(name, oldValue, newValue) {
+        if (oldValue === newValue) {
+            return void 0;
+        }
+        if (name === 'view-box') {
+            this.shadowRoot.host.style.overflow = 'auto';
+            const [_minX, _minY, width, height] = newValue.split(' ');
+            this.#drawingArea.setAttribute('viewBox', newValue);
+            this.#drawingArea.style.minWidth = width;
+            this.#drawingArea.style.minHeight = height;
+        }
     }
 
     drawCircle({ x, y }, r = 10) {
@@ -47,7 +68,7 @@ export class SvgDrawBoard extends HTMLElement {
 
     #initializeListeners() {
         this.#drawingArea.addEventListener('click', (e) => {
-            const {x, y} = getMouseXYPositionFromElement(this.#drawingArea, e);
+            const { x, y } = getMouseXYPositionFromElement(this.#drawingArea, e);
             this.drawCircle(this.#translateToSVGCoordinates(x, y));
         });
     }
