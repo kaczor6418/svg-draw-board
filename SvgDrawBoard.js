@@ -77,8 +77,7 @@ export class SvgDrawBoard extends HTMLElement {
       oldElement[prop]?.setAttribute('fill', SvgDrawBoard.defaultElementColor);
       oldElement[prop] = newElement;
       this.#addNewPolylinePoint(this.getCircleCoordinates(newElement));
-      this.#linePreview.setAttribute('x1', newElement.getAttribute('cx'));
-      this.#linePreview.setAttribute('y1', newElement.getAttribute('cy'));
+      this.#resetLivePreview(newElement.getAttribute('cx'), newElement.getAttribute('cy'))
       return true;
     } else {
       throw Error(`Property: ${prop.toString()} doesn't exists in reference elements`)
@@ -112,6 +111,13 @@ export class SvgDrawBoard extends HTMLElement {
       this.#linePreview.setAttribute('x2', x.toString());
       this.#linePreview.setAttribute('y2', y.toString());
     }
+  }
+
+  #resetLivePreview(x, y) {
+    this.#linePreview.setAttribute('x1', x);
+    this.#linePreview.setAttribute('y1', y);
+    this.#linePreview.setAttribute('x2', x);
+    this.#linePreview.setAttribute('y2', y);
   }
 
   #addNewPolylinePoint({x, y}) {
