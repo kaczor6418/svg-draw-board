@@ -9,6 +9,8 @@ const template = `
 }
 </style>
 <svg id="drawing-area" width="100%" height="100%" preserveAspectRatio="xMinYMin meet">
+  <circle id="cursor-preview" r="10" fill="blue" opacity="0.5" />
+  <line id="line-preview" stroke="blue" stroke-dasharray="2" opacity="0.5" />
   <polyline id="area-polyline" points="" fill="none" stroke="black" />
 </svg>
 `
@@ -20,6 +22,8 @@ export class SvgDrawBoard extends HTMLElement {
   static defaultElementColor = 'black';
 
   #drawingArea;
+  #cursorPreview
+  #linePreview
   #polyline;
   #referenceElement;
 
@@ -28,6 +32,8 @@ export class SvgDrawBoard extends HTMLElement {
     this.attachShadow({mode: 'open'});
     this.shadowRoot.innerHTML = template;
     this.#drawingArea = this.shadowRoot.querySelector('#drawing-area');
+    this.#cursorPreview = this.shadowRoot.querySelector('#cursor-preview');
+    this.#linePreview = this.shadowRoot.querySelector('#line-preview');
     this.#polyline = this.shadowRoot.querySelector('#area-polyline');
     this.#referenceElement = new Proxy({circle: null}, {
       set: this.#newReferenceElementHandler
@@ -71,6 +77,8 @@ export class SvgDrawBoard extends HTMLElement {
       oldElement[prop]?.setAttribute('fill', SvgDrawBoard.defaultElementColor);
       oldElement[prop] = newElement;
       this.#addNewPolylinePoint(this.getCircleCoordinates(newElement));
+      this.#linePreview.setAttribute('x1', newElement.getAttribute('cx'));
+      this.#linePreview.setAttribute('y1', newElement.getAttribute('cy'));
       return true;
     } else {
       throw Error(`Property: ${prop.toString()} doesn't exists in reference elements`)
@@ -82,6 +90,10 @@ export class SvgDrawBoard extends HTMLElement {
       const {x, y} = getMouseXYPositionFromElement(this.#drawingArea, e);
       this.drawCircle(this.#translateToSVGCoordinates(x, y));
     });
+    this.#drawingArea.addEventListener('mousemove', (e) => {
+      const {x, y} = getMouseXYPositionFromElement(this.#drawingArea, e);
+      this.#updateLivePreview(this.#translateToSVGCoordinates(x, y));
+    });
   }
 
   #translateToSVGCoordinates(x, y) {
@@ -91,6 +103,15 @@ export class SvgDrawBoard extends HTMLElement {
     point.y = (y - CTM.f) / CTM.d;
     point.matrixTransform(this.#drawingArea.getScreenCTM().inverse());
     return {x: point.x, y: point.y};
+  }
+
+  #updateLivePreview({x, y}) {
+    this.#cursorPreview.setAttribute('cx', x.toString());
+    this.#cursorPreview.setAttribute('cy', y.toString());
+    if (this.#referenceElement.circle !== null) {
+      this.#linePreview.setAttribute('x2', x.toString());
+      this.#linePreview.setAttribute('y2', y.toString());
+    }
   }
 
   #addNewPolylinePoint({x, y}) {
