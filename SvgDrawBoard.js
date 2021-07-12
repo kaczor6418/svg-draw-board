@@ -49,8 +49,8 @@ export class SvgDrawBoard extends HTMLElement {
       this.shadowRoot.host.style.overflow = 'auto';
       const [_minX, _minY, width, height] = newValue.split(' ');
       this.#drawingArea.setAttribute('viewBox', newValue);
-      this.#drawingArea.style.minWidth = width;
-      this.#drawingArea.style.minHeight = height;
+      this.#drawingArea.style.minWidth = `${width}px`;
+      this.#drawingArea.style.minHeight = `${height}px`;
     }
   }
 
