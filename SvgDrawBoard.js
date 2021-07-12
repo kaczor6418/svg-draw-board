@@ -84,15 +84,19 @@ export class SvgDrawBoard extends HTMLElement {
     }
   }
 
+  #handleLivePreviewChange = (event) => {
+    const {x, y} = getMouseXYPositionFromElement(this.#drawingArea, event);
+    this.#updateLivePreview(this.#translateToSVGCoordinates(x, y));
+  }
+
   #initializeListeners() {
     this.#drawingArea.addEventListener('click', (e) => {
       const {x, y} = getMouseXYPositionFromElement(this.#drawingArea, e);
       this.drawCircle(this.#translateToSVGCoordinates(x, y));
     });
-    this.#drawingArea.addEventListener('mousemove', (e) => {
-      const {x, y} = getMouseXYPositionFromElement(this.#drawingArea, e);
-      this.#updateLivePreview(this.#translateToSVGCoordinates(x, y));
-    });
+    this.#drawingArea.addEventListener('mousemove', this.#handleLivePreviewChange);
+    this.#drawingArea.addEventListener('touchmove', this.#handleLivePreviewChange);
+    this.#drawingArea.addEventListener('touchstart', this.#handleLivePreviewChange);
   }
 
   #translateToSVGCoordinates(x, y) {
