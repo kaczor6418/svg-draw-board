@@ -26,6 +26,8 @@ export class SvgDrawBoard extends HTMLElement {
   #linePreview
   #polyline;
   #referenceElement;
+  #stepValues
+  #oneRadianAngle
 
   constructor() {
     super();
@@ -35,6 +37,8 @@ export class SvgDrawBoard extends HTMLElement {
     this.#cursorPreview = this.shadowRoot.querySelector('#cursor-preview');
     this.#linePreview = this.shadowRoot.querySelector('#line-preview');
     this.#polyline = this.shadowRoot.querySelector('#area-polyline');
+    this.#oneRadianAngle = 180 / Math.PI;
+    this.#stepValues = [0, 22.5, 45, 67.5, 90, 112.5, 135, 157.5, 180, 202.5, 225, 247.5, 270, 292.5, 315, 337.5, 360];
     this.#referenceElement = new Proxy({circle: null}, {
       set: this.#newReferenceElementHandler
     });
@@ -85,8 +89,18 @@ export class SvgDrawBoard extends HTMLElement {
   }
 
   #handleLivePreviewChange = (event) => {
-    const {x, y} = getMouseXYPositionFromElement(this.#drawingArea, event);
-    this.#updateLivePreview(this.#translateToSVGCoordinates(x, y));
+    const p2 = getMouseXYPositionFromElement(this.#drawingArea, event);
+    let previewPoint = JSON.parse(JSON.stringify(p2));
+    if (this.#polyline.points.length > 1) {
+      const p1 = this.getCircleCoordinates(this.#referenceElement.circle);
+      const slope = this.#radianToAngle(this.#slope(p1, p2));
+      const previewAngle = this.#getClosestStep(slope);
+      console.log(previewAngle);
+      const pointLength =  Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
+      previewPoint.x = p1.x + pointLength * Math.cos(this.#angleToRadian(previewAngle));
+      previewPoint.y = p1.y + pointLength * Math.sin(this.#angleToRadian(previewAngle));
+    }
+    this.#updateLivePreview(this.#translateToSVGCoordinates(previewPoint.x, previewPoint.y));
   }
 
   #initializeListeners() {
@@ -97,6 +111,24 @@ export class SvgDrawBoard extends HTMLElement {
     this.#drawingArea.addEventListener('mousemove', this.#handleLivePreviewChange);
     this.#drawingArea.addEventListener('touchmove', this.#handleLivePreviewChange);
     this.#drawingArea.addEventListener('touchstart', this.#handleLivePreviewChange);
+  }
+
+  #getClosestStep(angle) {
+    return this.#stepValues.reduce((prev, curr) => {
+      return Math.abs(angle - prev) < Math.abs(angle - curr) ? prev : curr;
+    }, 0)
+  }
+
+  #slope({x: x1, y: y1}, {x: x2, y: y2}) {
+    return Math.atan2(y2 - y1, x2 - x1);
+  }
+
+  #radianToAngle(radian) {
+    return radian * this.#oneRadianAngle;
+  }
+
+  #angleToRadian(angle) {
+    return angle / this.#oneRadianAngle;
   }
 
   #translateToSVGCoordinates(x, y) {
